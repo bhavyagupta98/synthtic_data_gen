@@ -286,10 +286,10 @@ def evaluate_model_scenarios(model, X_train_real, y_train_real, X_test_real, y_t
 
     utility_score = results['train_synth_test_real']['accuracy'] / results['train_real_test_real']['accuracy']
     results['utility_score'] = utility_score
-    status = ("✓ EXCELLENT" if utility_score > 0.95 else
-              "✓ GOOD" if utility_score > 0.90 else
-              "⚠ ACCEPTABLE" if utility_score > 0.85 else
-              "✗ POOR")
+    status = ("EXCELLENT" if utility_score > 0.95 else
+              "GOOD" if utility_score > 0.90 else
+              "ACCEPTABLE" if utility_score > 0.85 else
+              "POOR")
     print(f"\nUtility Score: {utility_score:.4f} ({utility_score*100:.2f}% of baseline) | Status: {status}")
 
     return results
@@ -347,7 +347,7 @@ def evaluate_synthetic_data(X_real: pd.DataFrame, y_real: pd.Series,
     plot_utility_scores(ml_results)
 
     print("\n" + "="*80)
-    print("📋 FINAL SUMMARY REPORT")
+    print("FINAL SUMMARY REPORT")
     print("="*80)
 
     print("\n✓ Statistical Fidelity:")
@@ -359,7 +359,7 @@ def evaluate_synthetic_data(X_real: pd.DataFrame, y_real: pd.Series,
     if fidelity_results['correlation_diff']:
         print(f"  Correlation Difference: {fidelity_results['correlation_diff']:.4f}")
 
-    print("\n✓ ML Utility Scores:")
+    print("\nML Utility Scores:")
     for model_name, results in ml_results.items():
         print(f"  {model_name:25s}: {results['utility_score']:.4f}")
 
@@ -367,13 +367,13 @@ def evaluate_synthetic_data(X_real: pd.DataFrame, y_real: pd.Series,
     print(f"\nAverage Utility Score: {avg_utility:.4f} ({avg_utility*100:.2f}%)")
 
     if avg_utility > 0.95:
-        print("   ✓ VERDICT: EXCELLENT - Synthetic data is highly representative")
+        print("VERDICT: EXCELLENT - Synthetic data is highly representative")
     elif avg_utility > 0.90:
-        print("   ✓ VERDICT: GOOD - Synthetic data is suitable for most use cases")
+        print("VERDICT: GOOD - Synthetic data is suitable for most use cases")
     elif avg_utility > 0.85:
-        print("   ⚠ VERDICT: ACCEPTABLE - Synthetic data may need improvement")
+        print("VERDICT: ACCEPTABLE - Synthetic data may need improvement")
     else:
-        print("   ✗ VERDICT: POOR - Synthetic data needs significant improvement")
+        print("VERDICT: POOR - Synthetic data needs significant improvement")
 
     return fidelity_results, ml_results
 
@@ -383,6 +383,8 @@ def evaluate_synthetic_data(X_real: pd.DataFrame, y_real: pd.Series,
 
 if __name__ == "__main__":
     X_real, y_real, target_name = load_churn_data_with_target()
+    X_real = X_real[0:500]
+    y_real = y_real[0:500]
     print(f"Target variable name: '{target_name}'")
 
     data_dir = 'data'
