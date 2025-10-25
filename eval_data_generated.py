@@ -96,9 +96,12 @@ def load_churn_data_with_target():
     )
 
     print(y.value_counts())
+    print(X.columns)
+    print(X.shape)
+    print(y.head())
+    print(dataset.default_target_attribute)
 
     return X, y, dataset.default_target_attribute
-
 
 def calculate_metrics(y_true, y_pred, y_prob=None) -> Dict:
     metrics = {
@@ -126,68 +129,68 @@ def print_metrics(metrics: Dict):
     if metrics['auc_roc']:
         print(f"  AUC-ROC:   {metrics['auc_roc']:.4f}")
 
-def plot_comparison_results(ml_results: Dict):
-    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    fig.suptitle('Synthetic Data Quality Evaluation', fontsize=16, fontweight='bold')
+# def plot_comparison_results(ml_results: Dict):
+#     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+#     fig.suptitle('Synthetic Data Quality Evaluation', fontsize=16, fontweight='bold')
 
-    models = list(ml_results.keys())
-    metrics = ['accuracy', 'precision', 'recall', 'f1']
+#     models = list(ml_results.keys())
+#     metrics = ['accuracy', 'precision', 'recall', 'f1']
 
-    for idx, metric in enumerate(metrics):
-        ax = axes[idx // 3, idx % 3]
+#     for idx, metric in enumerate(metrics):
+#         ax = axes[idx // 3, idx % 3]
 
-        train_real_test_real = [ml_results[m]['train_real_test_real'][metric] for m in models]
-        train_real_test_synth = [ml_results[m]['train_real_test_synth'][metric] for m in models]
-        train_synth_test_real = [ml_results[m]['train_synth_test_real'][metric] for m in models]
-        train_both_test_real = [ml_results[m]['train_both_test_real'][metric] for m in models]
+#         train_real_test_real = [ml_results[m]['train_real_test_real'][metric] for m in models]
+#         train_real_test_synth = [ml_results[m]['train_real_test_synth'][metric] for m in models]
+#         train_synth_test_real = [ml_results[m]['train_synth_test_real'][metric] for m in models]
+#         train_both_test_real = [ml_results[m]['train_both_test_real'][metric] for m in models]
 
-        x = np.arange(len(models))
-        width = 0.2
+#         x = np.arange(len(models))
+#         width = 0.2
 
-        ax.bar(x - 1.5*width, train_real_test_real, width, label='Train Real / Test Real', alpha=0.8, color='#2E86AB')
-        ax.bar(x - 0.5*width, train_real_test_synth, width, label='Train Real / Test Synth', alpha=0.8, color='#A23B72')
-        ax.bar(x + 0.5*width, train_synth_test_real, width, label='Train Synth / Test Real', alpha=0.8, color='#F18F01')
-        ax.bar(x + 1.5*width, train_both_test_real, width, label='Train Both / Test Real', alpha=0.8, color='#06A77D')
+#         ax.bar(x - 1.5*width, train_real_test_real, width, label='Train Real / Test Real', alpha=0.8, color='#2E86AB')
+#         ax.bar(x - 0.5*width, train_real_test_synth, width, label='Train Real / Test Synth', alpha=0.8, color='#A23B72')
+#         ax.bar(x + 0.5*width, train_synth_test_real, width, label='Train Synth / Test Real', alpha=0.8, color='#F18F01')
+#         ax.bar(x + 1.5*width, train_both_test_real, width, label='Train Both / Test Real', alpha=0.8, color='#06A77D')
 
-        ax.set_ylabel(metric.capitalize(), fontsize=12)
-        ax.set_title(f'{metric.capitalize()} Comparison', fontsize=13, fontweight='bold')
-        ax.set_xticks(x)
-        ax.set_xticklabels(models, rotation=45, ha='right')
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3, axis='y')
-        ax.set_ylim([0, 1.0])
+#         ax.set_ylabel(metric.capitalize(), fontsize=12)
+#         ax.set_title(f'{metric.capitalize()} Comparison', fontsize=13, fontweight='bold')
+#         ax.set_xticks(x)
+#         ax.set_xticklabels(models, rotation=45, ha='right')
+#         ax.legend(fontsize=8)
+#         ax.grid(True, alpha=0.3, axis='y')
+#         ax.set_ylim([0, 1.0])
 
-    axes[1, 2].axis('off')
+#     axes[1, 2].axis('off')
 
-    plt.tight_layout()
-    plt.show()
+#     plt.tight_layout()
+#     plt.show()
 
-def plot_utility_scores(ml_results: Dict):
-    models = list(ml_results.keys())
-    utility_scores = [ml_results[m]['utility_score'] for m in models]
+# def plot_utility_scores(ml_results: Dict):
+#     models = list(ml_results.keys())
+#     utility_scores = [ml_results[m]['utility_score'] for m in models]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+#     fig, ax = plt.subplots(figsize=(10, 6))
 
-    colors = ['#28a745' if score > 0.95 else '#ffc107' if score > 0.90 else '#dc3545'
-              for score in utility_scores]
+#     colors = ['#28a745' if score > 0.95 else '#ffc107' if score > 0.90 else '#dc3545'
+#               for score in utility_scores]
 
-    bars = ax.barh(models, utility_scores, color=colors, alpha=0.8, edgecolor='black')
+#     bars = ax.barh(models, utility_scores, color=colors, alpha=0.8, edgecolor='black')
 
-    ax.axvline(x=0.95, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Excellent (>95%)')
-    ax.axvline(x=0.90, color='orange', linestyle='--', linewidth=2, alpha=0.5, label='Good (>90%)')
-    ax.axvline(x=0.85, color='red', linestyle='--', linewidth=2, alpha=0.5, label='Acceptable (>85%)')
+#     ax.axvline(x=0.95, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Excellent (>95%)')
+#     ax.axvline(x=0.90, color='orange', linestyle='--', linewidth=2, alpha=0.5, label='Good (>90%)')
+#     ax.axvline(x=0.85, color='red', linestyle='--', linewidth=2, alpha=0.5, label='Acceptable (>85%)')
 
-    for i, (bar, score) in enumerate(zip(bars, utility_scores)):
-        ax.text(score + 0.01, i, f'{score:.3f}', va='center', fontweight='bold')
+#     for i, (bar, score) in enumerate(zip(bars, utility_scores)):
+#         ax.text(score + 0.01, i, f'{score:.3f}', va='center', fontweight='bold')
 
-    ax.set_xlabel('Utility Score (Train Synth Test Real / Train Real Test Real)', fontsize=12, fontweight='bold')
-    ax.set_title('ML Utility Score by Model', fontsize=14, fontweight='bold')
-    ax.set_xlim([0.7, 1.05])
-    ax.legend(loc='lower right')
-    ax.grid(True, alpha=0.3, axis='x')
+#     ax.set_xlabel('Utility Score (Train Synth Test Real / Train Real Test Real)', fontsize=12, fontweight='bold')
+#     ax.set_title('ML Utility Score by Model', fontsize=14, fontweight='bold')
+#     ax.set_xlim([0.7, 1.05])
+#     ax.legend(loc='lower right')
+#     ax.grid(True, alpha=0.3, axis='x')
 
-    plt.tight_layout()
-    plt.show()
+#     plt.tight_layout()
+#     plt.show()
 
 def identify_column_types(X: pd.DataFrame) -> Tuple[list, list]:
     numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
@@ -249,7 +252,7 @@ def safe_predict_proba(model, X):
     return None
 
 def evaluate_model_scenarios(model, X_train_real, y_train_real, X_test_real, y_test_real,
-                             X_synth, y_synth_enc) -> Dict:
+                             X_synth, y_synth_enc, feature_names=None) -> Dict:
     results = {}
 
     print("\n1. Train on Real, Test on Real:")
@@ -260,19 +263,19 @@ def evaluate_model_scenarios(model, X_train_real, y_train_real, X_test_real, y_t
     results['train_real_test_real'] = calculate_metrics(y_test_real, y_pred, y_prob)
     print_metrics(results['train_real_test_real'])
 
-    print("\n2. Train on Real, Test on Synthetic:")
-    y_pred = model_real.predict(X_synth)
-    y_prob = safe_predict_proba(model_real, X_synth)
-    results['train_real_test_synth'] = calculate_metrics(y_synth_enc, y_pred, y_prob)
-    print_metrics(results['train_real_test_synth'])
+    # print("\n2. Train on Real, Test on Synthetic:")
+    # y_pred = model_real.predict(X_synth)
+    # y_prob = safe_predict_proba(model_real, X_synth)
+    # results['train_real_test_synth'] = calculate_metrics(y_synth_enc, y_pred, y_prob)
+    # print_metrics(results['train_real_test_synth'])
 
-    print("\n3. Train on Synthetic, Test on Real:")
-    model_synth = model.__class__(**model.get_params())
-    model_synth.fit(X_synth, y_synth_enc)
-    y_pred = model_synth.predict(X_test_real)
-    y_prob = safe_predict_proba(model_synth, X_test_real)
-    results['train_synth_test_real'] = calculate_metrics(y_test_real, y_pred, y_prob)
-    print_metrics(results['train_synth_test_real'])
+    # print("\n3. Train on Synthetic, Test on Real:")
+    # model_synth = model.__class__(**model.get_params())
+    # model_synth.fit(X_synth, y_synth_enc)
+    # y_pred = model_synth.predict(X_test_real)
+    # y_prob = safe_predict_proba(model_synth, X_test_real)
+    # results['train_synth_test_real'] = calculate_metrics(y_test_real, y_pred, y_prob)
+    # print_metrics(results['train_synth_test_real'])
 
     print("\n4. Train on Synthetic + Real, Test on Real:")
     X_combined = np.vstack([X_train_real, X_synth])
@@ -284,7 +287,8 @@ def evaluate_model_scenarios(model, X_train_real, y_train_real, X_test_real, y_t
     results['train_both_test_real'] = calculate_metrics(y_test_real, y_pred, y_prob)
     print_metrics(results['train_both_test_real'])
 
-    utility_score = results['train_synth_test_real']['accuracy'] / results['train_real_test_real']['accuracy']
+    print(results)
+    utility_score = results['train_both_test_real']['f1']
     results['utility_score'] = utility_score
     status = ("EXCELLENT" if utility_score > 0.95 else
               "GOOD" if utility_score > 0.90 else
@@ -292,7 +296,189 @@ def evaluate_model_scenarios(model, X_train_real, y_train_real, X_test_real, y_t
               "POOR")
     print(f"\nUtility Score: {utility_score:.4f} ({utility_score*100:.2f}% of baseline) | Status: {status}")
 
+
+    feature_importances = model_real.feature_importances_
+    sorted_idx = np.argsort(feature_importances)[::-1]
+    
+    print("\nTop 10 Most Important Features:")
+    print("="*50)
+    for i in sorted_idx[:10]:
+        print(f"Feature {i}: Importance {feature_importances[i]:.4f}")
+    
+    # Get actual column names for top 10 features
+    print("\nTop 10 Feature Names:")
+    print("="*50)
+    top_10_features = sorted_idx[:10]
+    
+    # Use passed feature names or fallback to indices
+    if feature_names is None:
+        feature_names = [f"Feature_{i}" for i in range(X_train_real.shape[1])]
+    
+    for i, feature_idx in enumerate(top_10_features):
+        if feature_idx < len(feature_names):
+            feature_name = feature_names[feature_idx]
+            importance = feature_importances[feature_idx]
+            print(f"{i+1:2d}. {feature_name:30s} (Importance: {importance:.4f})")
+        else:
+            print(f"{i+1:2d}. Feature_{feature_idx} (Importance: {feature_importances[feature_idx]:.4f})")
+    
+    # # Train new model with only top 10 features
+    # print(f"\n{'='*80}")
+    # print("TRAINING NEW MODEL WITH TOP 10 FEATURES ONLY")
+    # print(f"{'='*80}")
+    
+    # # Select only top 10 features
+    # X_real_train_top10 = X_train_real[:, top_10_features]
+    # X_real_test_top10 = X_test_real[:, top_10_features]
+    # X_synth_top10 = X_synth[:, top_10_features]
+    
+    # print(f"Top 10 features shape: {X_real_train_top10.shape}")
+    # print(f"Selected feature indices: {top_10_features}")
+    
+    # # Handle feature names safely
+    # selected_names = []
+    # for i in top_10_features:
+    #     if i < len(feature_names):
+    #         selected_names.append(feature_names[i])
+    #     else:
+    #         selected_names.append(f"Feature_{i}")
+    # print(f"Selected feature names: {selected_names}")
+    
+    # # Train new Random Forest with top 10 features only
+    # model_top10 = RandomForestClassifier(
+    #     n_estimators=200,
+    #     random_state=RANDOM_STATE,
+    #     n_jobs=-1
+    # )
+    
+    # print(f"\nTraining Random Forest with top 10 features...")
+    # model_top10.fit(X_real_train_top10, y_train_real)
+    
+    # # Evaluate the top 10 feature model
+    # print(f"\n1. Train on Real (Top 10), Test on Real (Top 10):")
+    # y_pred_top10 = model_top10.predict(X_real_test_top10)
+    # y_prob_top10 = model_top10.predict_proba(X_real_test_top10)[:, 1] if len(np.unique(y_test_real)) == 2 else None
+    
+    # metrics_top10 = calculate_metrics(y_test_real, y_pred_top10, y_prob_top10)
+    # print_metrics(metrics_top10)
+    
+    # # Train top 10 model on synthetic + real data
+    # print(f"\n2. Train on Synthetic + Real (Top 10), Test on Real (Top 10):")
+    # X_combined_top10 = np.vstack([X_real_train_top10, X_synth_top10])
+    # y_combined = np.hstack([y_train_real, y_synth_enc])
+    # model_top10_combined = RandomForestClassifier(
+    #     n_estimators=200,
+    #     random_state=RANDOM_STATE,
+    #     n_jobs=-1
+    # )
+    # model_top10_combined.fit(X_combined_top10, y_combined)
+    
+    # y_pred_top10_combined = model_top10_combined.predict(X_real_test_top10)
+    # y_prob_top10_combined = model_top10_combined.predict_proba(X_real_test_top10)[:, 1] if len(np.unique(y_test_real)) == 2 else None
+    
+    # metrics_top10_combined = calculate_metrics(y_test_real, y_pred_top10_combined, y_prob_top10_combined)
+    # print_metrics(metrics_top10_combined)
+    
+    # # Compare with full model
+    # print(f"\n3. Train on Real (All Features), Test on Real (All Features):")
+    # y_pred_full = model_real.predict(X_test_real)
+    # y_prob_full = model_real.predict_proba(X_test_real)[:, 1] if len(np.unique(y_test_real)) == 2 else None
+    
+    # metrics_full = calculate_metrics(y_test_real, y_pred_full, y_prob_full)
+    # print_metrics(metrics_full)
+    
+    # # Performance comparison
+    # print(f"\n{'='*80}")
+    # print("PERFORMANCE COMPARISON")
+    # print(f"{'='*80}")
+    # print(f"{'Metric':<15} {'All Features':<15} {'Top 10 (Real)':<15} {'Top 10 (Synth+Real)':<20} {'Diff (Top10-All)':<15}")
+    # print(f"{'-'*80}")
+    
+    # for metric in ['accuracy', 'precision', 'recall', 'f1']:
+    #     full_val = metrics_full[metric]
+    #     top10_val = metrics_top10[metric]
+    #     top10_combined_val = metrics_top10_combined[metric]
+    #     diff = top10_val - full_val
+    #     diff_str = f"{diff:+.4f}" if diff >= 0 else f"{diff:.4f}"
+    #     print(f"{metric.capitalize():<15} {full_val:<15.4f} {top10_val:<15.4f} {top10_combined_val:<20.4f} {diff_str:<15}")
+    
+    # if 'auc_roc' in metrics_full and 'auc_roc' in metrics_top10 and 'auc_roc' in metrics_top10_combined:
+    #     if metrics_full['auc_roc'] and metrics_top10['auc_roc'] and metrics_top10_combined['auc_roc']:
+    #         full_auc = metrics_full['auc_roc']
+    #         top10_auc = metrics_top10['auc_roc']
+    #         top10_combined_auc = metrics_top10_combined['auc_roc']
+    #         auc_diff = top10_auc - full_auc
+    #         auc_diff_str = f"{auc_diff:+.4f}" if auc_diff >= 0 else f"{auc_diff:.4f}"
+    #         print(f"{'AUC-ROC':<15} {full_auc:<15.4f} {top10_auc:<15.4f} {top10_combined_auc:<20.4f} {auc_diff_str:<15}")
+    
+    # # Additional comparison: Top 10 Real vs Top 10 Synth+Real
+    # print(f"\n{'='*60}")
+    # print("TOP 10 FEATURES: REAL vs SYNTH+REAL COMPARISON")
+    # print(f"{'='*60}")
+    # print(f"{'Metric':<15} {'Top 10 (Real)':<15} {'Top 10 (Synth+Real)':<20} {'Difference':<15}")
+    # print(f"{'-'*60}")
+    
+    # for metric in ['accuracy', 'precision', 'recall', 'f1']:
+    #     top10_val = metrics_top10[metric]
+    #     top10_combined_val = metrics_top10_combined[metric]
+    #     diff = top10_combined_val - top10_val
+    #     diff_str = f"{diff:+.4f}" if diff >= 0 else f"{diff:.4f}"
+    #     print(f"{metric.capitalize():<15} {top10_val:<15.4f} {top10_combined_val:<20.4f} {diff_str:<15}")
+    
+    # if 'auc_roc' in metrics_top10 and 'auc_roc' in metrics_top10_combined:
+    #     if metrics_top10['auc_roc'] and metrics_top10_combined['auc_roc']:
+    #         top10_auc = metrics_top10['auc_roc']
+    #         top10_combined_auc = metrics_top10_combined['auc_roc']
+    #         auc_diff = top10_combined_auc - top10_auc
+    #         auc_diff_str = f"{auc_diff:+.4f}" if auc_diff >= 0 else f"{auc_diff:.4f}"
+    #         print(f"{'AUC-ROC':<15} {top10_auc:<15.4f} {top10_combined_auc:<20.4f} {auc_diff_str:<15}")
+    
+    # # Store results
+    # results['top_10_features'] = {
+    #     'feature_names': selected_names,
+    #     'feature_indices': top_10_features.tolist(),
+    #     'importances': feature_importances[top_10_features].tolist(),
+    #     'metrics_real_only': metrics_top10,
+    #     'metrics_synth_plus_real': metrics_top10_combined
+    # }
+    
+    # # Save top 10 features for data generation
+    # save_top_features(selected_names, top_10_features.tolist(), 
+    #                  feature_importances[top_10_features].tolist())
+
     return results
+
+
+def save_top_features(feature_names: List[str], feature_indices: List[int], 
+                     importances: List[float]) -> None:
+    """
+    Save top 10 features to a JSON file for use in data generation
+    """
+    import json
+    import os
+    
+    data_dir = 'data'
+    os.makedirs(data_dir, exist_ok=True)
+    
+    top_features_data = {
+        'top_10_features': {
+            'names': feature_names,
+            'indices': feature_indices,
+            'importances': importances,
+            'count': len(feature_names)
+        },
+        'generated_at': pd.Timestamp.now().isoformat(),
+        'description': 'Top 10 most important features from Random Forest analysis'
+    }
+    
+    output_path = os.path.join(data_dir, 'top_10_features.json')
+    with open(output_path, 'w') as f:
+        json.dump(top_features_data, f, indent=2)
+    
+    print(f"\n✓ Top 10 features saved to: {output_path}")
+    print(f"  Features: {feature_names}")
+    print(f"  Indices: {feature_indices}")
+    print(f"  Importances: {[f'{imp:.4f}' for imp in importances]}")
 
 def evaluate_ml_utility(X_real: pd.DataFrame, y_real: pd.Series,
                         X_synth: pd.DataFrame, y_synth: pd.Series) -> Dict:
@@ -316,25 +502,26 @@ def evaluate_ml_utility(X_real: pd.DataFrame, y_real: pd.Series,
         y_real_train, y_real_test, y_synth
     )
 
-    models = {
-        'Logistic Regression': LogisticRegression(max_iter=1000, random_state=RANDOM_STATE),
-        'Decision Tree': DecisionTreeClassifier(random_state=RANDOM_STATE),
-        'Random Forest': RandomForestClassifier(n_estimators=100, random_state=RANDOM_STATE),
-        'Gradient Boosting': GradientBoostingClassifier(random_state=RANDOM_STATE)
-    }
+    # ✅ Only Random Forest used
+    model_name = 'Random Forest'
+    model = RandomForestClassifier(
+        n_estimators=200,
+        random_state=RANDOM_STATE,
+        n_jobs=-1
+    )
 
+    print(f"\n{'='*80}\nMODEL: {model_name}\n{'='*80}")
     results = {}
-    for model_name, model in models.items():
-        print(f"\n{'='*80}\nMODEL: {model_name}\n{'='*80}")
-        results[model_name] = evaluate_model_scenarios(
-            model,
-            X_real_train_proc,
-            y_real_train_enc,
-            X_real_test_proc,
-            y_real_test_enc,
-            X_synth_proc,
-            y_synth_enc
-        )
+    results[model_name] = evaluate_model_scenarios(
+        model,
+        X_real_train_proc,
+        y_real_train_enc,
+        X_real_test_proc,
+        y_real_test_enc,
+        X_synth_proc,
+        y_synth_enc,
+        feature_names=X_real_train.columns.tolist()
+    )
 
     return results
 
@@ -343,8 +530,8 @@ def evaluate_synthetic_data(X_real: pd.DataFrame, y_real: pd.Series,
 
     fidelity_results = calculate_statistical_fidelity(X_real, X_synth)
     ml_results = evaluate_ml_utility(X_real, y_real, X_synth, y_synth)
-    plot_comparison_results(ml_results)
-    plot_utility_scores(ml_results)
+    # plot_comparison_results(ml_results)
+    # plot_utility_scores(ml_results)
 
     print("\n" + "="*80)
     print("FINAL SUMMARY REPORT")
@@ -383,8 +570,9 @@ def evaluate_synthetic_data(X_real: pd.DataFrame, y_real: pd.Series,
 
 if __name__ == "__main__":
     X_real, y_real, target_name = load_churn_data_with_target()
-    X_real = X_real[0:500]
-    y_real = y_real[0:500]
+
+    X_real = X_real[0:1000]
+    y_real = y_real[0:1000]
     print(f"Target variable name: '{target_name}'")
 
     data_dir = 'data'
