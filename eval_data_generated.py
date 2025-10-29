@@ -12,6 +12,13 @@ from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, roc_auc_score, confusion_matrix)
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.compose import ColumnTransformer
+try:
+    from xgboost import XGBClassifier
+    XGB_AVAILABLE = True
+    XGB_IMPORT_ERROR = None
+except Exception as _xgb_err:
+    XGB_AVAILABLE = False
+    XGB_IMPORT_ERROR = str(_xgb_err)
 from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -482,7 +489,7 @@ def save_top_features(feature_names: List[str], feature_indices: List[int],
     print(f"  Importances: {[f'{imp:.4f}' for imp in importances]}")
 
 def evaluate_ml_utility(X_real: pd.DataFrame, y_real: pd.Series,
-                        X_synth: pd.DataFrame, y_synth: pd.Series) -> Dict:
+                       X_synth: pd.DataFrame, y_synth: pd.Series) -> Dict:
 
     X_real_train, X_real_test, y_real_train, y_real_test = train_test_split(
         X_real, y_real, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y_real
@@ -503,18 +510,18 @@ def evaluate_ml_utility(X_real: pd.DataFrame, y_real: pd.Series,
         y_real_train, y_real_test, y_synth
     )
 
-    # ✅ Only Random Forest used
-    model_name = 'Random Forest'
-    model = RandomForestClassifier(
+    results = {}
+
+    # Random Forest
+    rf_name = 'Random Forest'
+    rf_model = RandomForestClassifier(
         n_estimators=200,
         random_state=RANDOM_STATE,
         n_jobs=-1
     )
-
-    print(f"\n{'='*80}\nMODEL: {model_name}\n{'='*80}")
-    results = {}
-    results[model_name] = evaluate_model_scenarios(
-        model,
+    print(f"\n{'='*80}\nMODEL: {rf_name}\n{'='*80}")
+    results[rf_name] = evaluate_model_scenarios(
+        rf_model,
         X_real_train_proc,
         y_real_train_enc,
         X_real_test_proc,
@@ -523,6 +530,36 @@ def evaluate_ml_utility(X_real: pd.DataFrame, y_real: pd.Series,
         y_synth_enc,
         feature_names=X_real_train.columns.tolist()
     )
+
+    # XGBoost (if available)
+    if XGB_AVAILABLE:
+        xgb_name = 'XGBoost'
+        xgb_model = XGBClassifier(
+            n_estimators=300,
+            max_depth=6,
+            learning_rate=0.1,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=RANDOM_STATE,
+            n_jobs=-1,
+            eval_metric='logloss',
+            tree_method='hist'
+        )
+        print(f"\n{'='*80}\nMODEL: {xgb_name}\n{'='*80}")
+        results[xgb_name] = evaluate_model_scenarios(
+            xgb_model,
+            X_real_train_proc,
+            y_real_train_enc,
+            X_real_test_proc,
+            y_real_test_enc,
+            X_synth_proc,
+            y_synth_enc,
+            feature_names=X_real_train.columns.tolist()
+        )
+    else:
+        print("\n[WARN] XGBoost unavailable, skipping XGBoost evaluation.")
+        if XGB_IMPORT_ERROR:
+            print(f"       Import error: {XGB_IMPORT_ERROR}")
 
     return results
 
