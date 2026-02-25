@@ -15,14 +15,14 @@ import matplotlib.pyplot as plt
 from typing import List, Dict, Tuple
 import hashlib
 
-GROQ_API_KEY = ""
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
 OPENML_DATASET_ID = 40701
-SUBSAMPLE_N = 500
-SYNTH_N = 1000
-BATCH_SIZE = 50
-EXAMPLE_SIZE = 5
+SUBSAMPLE_N = 200
+SYNTH_N = 2000
+BATCH_SIZE = 25
+EXAMPLE_SIZE = 20
 MODEL_NAME = "openai/gpt-oss-20b"
 TEMPERATURE = 0.2
 MAX_TOKENS = 50000
@@ -100,17 +100,96 @@ def decode_synthetic(synth_rows: List[Dict], code_to_col: Dict[str, str]) -> Lis
     return [{code_to_col.get(k, k): v for k, v in row.items()} for row in synth_rows]
 
 
+def calculate_target_balance(original_df: pd.DataFrame, target_column: str = 'class') -> Dict[str, float]:
+    """
+    Force target distribution close to 50–50 by generating more minority-class samples.
+    """
+    if target_column not in original_df.columns:
+        return {'0': 0.5, '1': 0.5}
+
+    class_counts = original_df[target_column].value_counts()
+    if len(class_counts) < 2:
+        return {'0': 0.5, '1': 0.5}
+
+    total_samples = len(original_df)
+    current_dist = {str(k): v / total_samples for k, v in class_counts.items()}
+    majority_class = str(class_counts.idxmax())
+    minority_class = str(class_counts.idxmin())
+
+    # 🎯 Always aim for 50–50
+    target_dist = {majority_class: 0.5, minority_class: 0.5}
+
+    print(f"📊 Original distribution: {current_dist}")
+    print(f"🎯 Target balanced distribution: {target_dist}")
+
+    return target_dist
+
+
+def analyze_feature_relationships(df: pd.DataFrame) -> str:
+    """
+    Analyze relationships between features to help LLM understand patterns
+    """
+    insights = []
+    
+    # Analyze correlations for numeric features
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    if len(numeric_cols) > 1:
+        corr_matrix = df[numeric_cols].corr()
+        # Find strong correlations
+        strong_corrs = []
+        for i in range(len(corr_matrix.columns)):
+            for j in range(i+1, len(corr_matrix.columns)):
+                corr_val = corr_matrix.iloc[i, j]
+                if abs(corr_val) > 0.5:  # Strong correlation
+                    col1, col2 = corr_matrix.columns[i], corr_matrix.columns[j]
+                    strong_corrs.append(f"{col1} and {col2} (r={corr_val:.2f})")
+        
+        if strong_corrs:
+            insights.append(f"Strong correlations: {', '.join(strong_corrs[:3])}")
+    
+    # Analyze class patterns
+    if 'class' in df.columns:
+        class_col = 'class'
+        # Find features that differ between classes
+        class_0 = df[df[class_col] == 0]
+        class_1 = df[df[class_col] == 1]
+        
+        for col in numeric_cols:
+            if col != class_col:
+                mean_0 = class_0[col].mean()
+                mean_1 = class_1[col].mean()
+                if abs(mean_1 - mean_0) > class_0[col].std() * 0.5:  # Significant difference
+                    insights.append(f"Class 1 has higher {col} (avg: {mean_1:.1f} vs {mean_0:.1f})")
+    
+    # Analyze categorical patterns
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns
+    for col in categorical_cols:
+        if col != 'class' and df[col].nunique() < 10:  # Small number of categories
+            value_counts = df[col].value_counts()
+            most_common = value_counts.index[0]
+            insights.append(f"Most common {col}: {most_common} ({value_counts.iloc[0]/len(df)*100:.1f}%)")
+    
+    return " | ".join(insights) if insights else "No strong patterns detected"
+
+
 def build_prompt(columns: List[str], full_df: pd.DataFrame,
                  n_return: int, example_size: int = EXAMPLE_SIZE,
                  use_encoding: bool = False) -> str:
     type_map = identify_column_types(full_df)
 
+    # Calculate target balance for better overall dataset balance
+    target_balance = calculate_target_balance(full_df)
+    
+    # Get diverse examples that show different patterns
     example_rows = full_df.sample(min(example_size, len(full_df)), random_state=None)
     examples_json = example_rows.to_dict(orient="records")
 
     print(examples_json)
 
     stats = get_column_stats(full_df, type_map)
+    
+    # Analyze relationships between features
+    relationship_insights = analyze_feature_relationships(full_df)
 
     if use_encoding:
         col_to_code, _ = create_column_mapping(columns)
@@ -121,27 +200,40 @@ def build_prompt(columns: List[str], full_df: pd.DataFrame,
         mapping_desc = json.dumps(col_to_code, indent=2)
         hint_lines = "; ".join([f"{col_to_code[k]}: {v}" for k, v in type_map.items()])
 
+        # Format target balance for prompt
+        target_balance_str = f"Target class distribution: {target_balance}"
+        
         prompt = f"""
-You are generating synthetic tabular data. Column names are encoded to save tokens.
+You are generating synthetic tabular data that learns from patterns and relationships. Column names are encoded to save tokens.
 
 Column mapping (code -> full name):
 {mapping_desc}
 
 Column types: {hint_lines}
 
+Data insights and relationships discovered:
+{relationship_insights}
+
 Column statistics (from full dataset):
 {json.dumps(stats_encoded, indent=2)}
 
-Here are {len(examples_json)} example rows (using encoded column names):
+Here are {len(examples_json)} example rows showing different patterns (using encoded column names):
 {json.dumps(examples_json, indent=2)}
 
-Generate exactly {n_return} NEW rows following the same patterns and distributions.
-IMPORTANT:
+Generate exactly {n_return} NEW rows that follow the discovered patterns and relationships.
+CRITICAL INSTRUCTIONS:
 - Use the ENCODED column names (c0, c1, etc.)
 - Keep numeric columns as numbers (no quotes)
-- Follow the statistical distributions shown above
 - Keep categorical/text as strings
-- Create DIVERSE rows, avoid repetition
+- LEARN FROM RELATIONSHIPS: Capture *all* relationships, not just between features and target. 
+  Consider correlations, dependencies, and causal links among all columns.
+- PRESERVE STRUCTURE: When generating rows, ensure that values across columns are mutually consistent 
+  and follow logical or real-world constraints implied by the examples and insights.
+- CREATE DIVERSE ROWS that respect these inter-column relationships, rather than merely fitting numeric distributions.
+- BALANCE FOR OVERALL DATASET: {target_balance_str}
+- ENHANCE MINORITY CLASSES while keeping realistic feature interactions.
+- THINK LIKE A DATA GENERATION MODEL: Understand how combinations of multiple columns co-occur, 
+  not just how they predict an outcome.
 - Output ONLY valid JSON array of objects
 
 Return only JSON (no explanation).
@@ -150,22 +242,33 @@ Return only JSON (no explanation).
         col_list = ", ".join(columns)
         hint_lines = "; ".join([f"{k}: {v}" for k, v in type_map.items()])
 
+        # Format target balance for prompt
+        target_balance_str = f"Target class distribution: {target_balance}"
+        
         prompt = f"""
-You are given a tabular dataset with columns: {col_list}.
-Column types: {hint_lines}.
+You are generating synthetic tabular data that learns from patterns and relationships.
+
+Dataset columns: {col_list}
+Column types: {hint_lines}
+
+Data insights and relationships discovered:
+{relationship_insights}
 
 Column statistics (from full dataset):
 {json.dumps(stats, indent=2)}
 
-Here are {len(examples_json)} example rows:
+Here are {len(examples_json)} example rows showing different patterns:
 {json.dumps(examples_json, indent=2)}
 
-Generate exactly {n_return} NEW rows that follow the same schema and distributions.
-IMPORTANT:
+Generate exactly {n_return} NEW rows that follow the discovered patterns and relationships.
+CRITICAL INSTRUCTIONS:
 - Keep numeric columns as numbers (no quotes)
-- Follow the statistical distributions shown above
 - Keep categorical/text columns as strings
-- Create DIVERSE rows, avoid duplicates
+- LEARN FROM RELATIONSHIPS: Use the insights above to understand how features relate to each other
+- Create DIVERSE rows that follow these learned patterns, not just statistics
+- BALANCE FOR OVERALL DATASET: {target_balance_str}
+- Generate more samples of the minority class to improve overall dataset balance
+- Think like a recommender system - understand why certain combinations lead to certain outcomes
 - Output ONLY valid JSON array of objects
 
 Return only JSON (no explanation).
@@ -214,7 +317,8 @@ def generate_synthetic_batched(df_sample: pd.DataFrame,
                                total_samples: int,
                                batch_size: int = BATCH_SIZE,
                                example_size: int = EXAMPLE_SIZE,
-                               use_encoding: bool = USE_COLUMN_ENCODING) -> pd.DataFrame:
+                               use_encoding: bool = USE_COLUMN_ENCODING,
+                               target_balance: Dict[str, float] = None) -> pd.DataFrame:
     columns = df_sample.columns.tolist()
     all_synth_rows = []
     seen_hashes = set()
@@ -266,7 +370,27 @@ def generate_synthetic_batched(df_sample: pd.DataFrame,
             if duplicates_found > 0:
                 print(f"   ⚠ Filtered {duplicates_found} duplicate(s)")
             print(f"   ✓ Generated {len(unique_records)} unique samples")
-            print(f"   📊 Progress: {samples_generated}/{total_samples} ({100*samples_generated/total_samples:.1f}%)\n")
+            print(f"   📊 Progress: {samples_generated}/{total_samples} ({100*samples_generated/total_samples:.1f}%)")
+            
+            # Check class distribution so far
+            if samples_generated > 0:
+                current_df = pd.DataFrame(all_synth_rows)
+                if 'class' in current_df.columns:
+                    class_counts = current_df['class'].value_counts()
+                    total_current = len(current_df)
+                    if len(class_counts) >= 2:
+                        class_0_pct = (class_counts.get('0', 0) / total_current) * 100
+                        class_1_pct = (class_counts.get('1', 0) / total_current) * 100
+                        print(f"   📈 Current class distribution: {class_counts.get('0', 0)} class 0 ({class_0_pct:.1f}%), {class_counts.get('1', 0)} class 1 ({class_1_pct:.1f}%)")
+                        
+                        # Show target vs actual
+                        if target_balance:
+                            target_0_pct = target_balance.get('0', 0.5) * 100
+                            target_1_pct = target_balance.get('1', 0.5) * 100
+                            print(f"   🎯 Target distribution: {target_0_pct:.1f}% class 0, {target_1_pct:.1f}% class 1")
+                    else:
+                        print(f"   📈 Current class distribution: {class_counts.to_dict()}")
+            print()
 
             time.sleep(0.5)
 
@@ -276,6 +400,22 @@ def generate_synthetic_batched(df_sample: pd.DataFrame,
 
     print(f"{'='*60}")
     print(f"✓ Generation complete: {samples_generated} unique samples generated")
+    
+    # Final class distribution analysis
+    if samples_generated > 0:
+        final_df = pd.DataFrame(all_synth_rows)
+        if 'class' in final_df.columns:
+            class_counts = final_df['class'].value_counts()
+            total_final = len(final_df)
+            if len(class_counts) >= 2:
+                class_0_pct = (class_counts.get('0', 0) / total_final) * 100
+                class_1_pct = (class_counts.get('1', 0) / total_final) * 100
+                print(f"📊 Final class distribution: {class_counts.get('0', 0)} class 0 ({class_0_pct:.1f}%), {class_counts.get('1', 0)} class 1 ({class_1_pct:.1f}%)")
+                balance_ratio = min(class_0_pct, class_1_pct) / max(class_0_pct, class_1_pct)
+                print(f"📈 Balance ratio: {balance_ratio:.3f} (1.0 = perfect balance)")
+            else:
+                print(f"📊 Final class distribution: {class_counts.to_dict()}")
+    
     print(f"{'='*60}\n")
 
     df_synth = coerce_synthetic_df(all_synth_rows, df_sample)
@@ -314,6 +454,11 @@ def encode_for_embedding(real_df: pd.DataFrame, synth_df: pd.DataFrame) -> Tuple
     print(f"Encoding for visualization:")
     print(f"  - Numeric columns ({len(numeric_cols)}): {numeric_cols[:5]}{'...' if len(numeric_cols) > 5 else ''}")
     print(f"  - Categorical columns ({len(categorical_cols)}): {categorical_cols[:5]}{'...' if len(categorical_cols) > 5 else ''}")
+
+    # Convert all categorical columns to strings to avoid mixed type issues
+    for col in categorical_cols:
+        if col in df_all.columns:
+            df_all[col] = df_all[col].astype(str)
 
     transformers = []
     if numeric_cols:
@@ -397,12 +542,16 @@ def main():
 
     print(f"\nGenerating {SYNTH_N} synthetic samples")
 
+    # Calculate target balance for the original dataset
+    target_balance = calculate_target_balance(df)
+    
     df_synth = generate_synthetic_batched(
         df_sample,
         total_samples=SYNTH_N,
         batch_size=BATCH_SIZE,
         example_size=EXAMPLE_SIZE,
-        use_encoding=USE_COLUMN_ENCODING
+        use_encoding=USE_COLUMN_ENCODING,
+        target_balance=target_balance
     )
 
 

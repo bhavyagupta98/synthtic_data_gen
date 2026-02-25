@@ -1,0 +1,43 @@
+{
+  "top_10_features": {
+    "names": [
+      "international_plan",
+      "number_vmail_messages",
+      "total_day_minutes",
+      "total_day_charge",
+      "total_night_minutes",
+      "account_length",
+      "voice_mail_plan",
+      "total_night_charge",
+      "Feature_27",
+      "total_eve_minutes"
+    ],
+    "indices": [
+      4,
+      6,
+      7,
+      9,
+      13,
+      1,
+      5,
+      15,
+      27,
+      10
+    ],
+    "importances": [
+      0.11605256529479839,
+      0.10360985670700772,
+      0.06848206685516323,
+      0.06253460238913884,
+      0.05051946785732983,
+      0.04971128507281924,
+      0.04934780893660394,
+      0.04390190644810629,
+      0.04249957257473717,
+      0.04114219905925659
+    ],
+    "count": 10
+  },
+  "generated_at": "2025-10-24T13:29:10.417326",
+  "description": "Top 10 most important features from Random Forest analysis"
+}
