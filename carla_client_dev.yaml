@@ -7,27 +7,75 @@ metadata:
     app: carla-client-dev
 spec:
   restartPolicy: Never
+
+  tolerations:
+    - key: "nautilus.io/issue"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "nautilus.io/testing"
+      operator: "Exists"
+      effect: "NoSchedule"
+
   containers:
   - name: client
-    image: python:3.10-slim
+    image: vllm/vllm-openai:latest
     command: ["/bin/bash", "-lc"]
     args:
       - |
         set -e
-        echo "carla-client-dev is ready."
-        echo "PVC mounted at /workspace"
-        echo "Sleeping forever..."
-        sleep infinity
+
+        echo "[INFO] Installing basic utilities..."
+        apt-get update && apt-get install -y \
+          vim \
+          procps \
+          htop \
+          curl \
+          wget \
+          iproute2 \
+          net-tools \
+          less \
+          tmux \
+          git \
+          && rm -rf /var/lib/apt/lists/*
+
+        # Put HF cache on your PVC so the model download persists across pod restarts.
+        export HF_HOME=/workspace/.cache/huggingface
+        export TRANSFORMERS_CACHE=/workspace/.cache/huggingface
+        export HF_HUB_DISABLE_TELEMETRY=1
+
+        mkdir -p /workspace/.cache/huggingface
+
+        pip3 install carla==0.9.16 
+
+        # Start OpenAI-compatible server on port 8000
+        vllm serve Qwen/Qwen2.5-VL-3B-Instruct-AWQ \
+          --host 0.0.0.0 \
+          --port 8000 \
+          --gpu-memory-utilization 0.75 \
+          --max-model-len 2048 \
+          --max-num-seqs 1 \
+          --mm-encoder-tp-mode data \
+          --limit-mm-per-prompt '{"image":1,"video":0}'
+
+
+    ports:
+      - containerPort: 8000
+        name: http
+
     resources:
       requests:
         cpu: "2"
-        memory: "4Gi"
+        memory: "32Gi"
+        nvidia.com/gpu: 1
       limits:
         cpu: "4"
-        memory: "8Gi"
+        memory: "32Gi"
+        nvidia.com/gpu: 1
+
     volumeMounts:
     - name: storage
       mountPath: /workspace
+
   volumes:
   - name: storage
     persistentVolumeClaim:
